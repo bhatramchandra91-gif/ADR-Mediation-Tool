@@ -149,7 +149,6 @@ if st.button("Generate Mediator Suggestion"):
     else:
         st.warning("Please enter both party positions.")    "Defensive negotiator",
     "Strategic negotiator"
-]
 
 twists = [
     "New email evidence appears.",
