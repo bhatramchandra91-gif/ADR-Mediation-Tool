@@ -245,7 +245,7 @@ st.sidebar.write(
 if len(st.session_state.chat) > 6:
     st.sidebar.success("Negotiation progressing")
 else:
-    st.sidebar.info("Early stage mediation")]
+    st.sidebar.info("Early stage mediation")
 
 party_roles = [
     "Aggressive negotiator",
