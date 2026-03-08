@@ -1,4 +1,7 @@
 import streamlit as st
+import random
+from openai import OpenAI
+from deep_translator import GoogleTranslator
 
 # -----------------------------
 # Page Config
