@@ -115,36 +115,34 @@ if session_mode == "Multi User Room":
 # -----------------------------
 def generate_ai_case():
 
-    prompt="""
-    Generate a short mediation dispute with:
-    Case title
-    Background
-    Two hidden evidences
+    prompt = """
+    Generate a mediation dispute with the following structure:
+
+    Case Title:
+    Detailed Background (5-6 lines):
+
+    Hidden Evidence:
+    - Evidence 1
+    - Evidence 2
+    - Evidence 3
+
+    Return in JSON format:
+    {
+    "title":"",
+    "background":"",
+    "evidence":[]
+    }
     """
 
-    res=client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[{"role":"user","content":prompt}]
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
     )
 
-    return res.choices[0].message.content
+    import json
+    case_data = json.loads(response.choices[0].message.content)
 
-
-if st.button("Generate AI Dispute Case"):
-
-    case_text=generate_ai_case()
-
-    st.session_state.case=case_text
-
-    st.session_state.evidence_revealed=False
-
-
-if st.session_state.case:
-
-    st.subheader("📁 Mediation Case")
-
-    st.write(st.session_state.case)
-
+    return case_data
 
 # -----------------------------
 # EVIDENCE
