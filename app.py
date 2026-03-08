@@ -8,7 +8,9 @@ client = OpenAI(api_key="sk-proj-7fcF_AhXBSZi8n2ujJ--KlZTeUF1yIqbJA2q6u9McKv-68m
 
 st.set_page_config(page_title="ADR Mediation Simulator", layout="wide")
 
-st.title("⚖️ AI ADR Mediation Training Simulator")
+st.title(translate_text("⚖️ AI ADR Mediation Training Simulator",language))
+st.header(translate_text("Case Details", language))
+st.header(translate_text("Negotiation Discussion", language))
 
 # Language Selection
 st.sidebar.header("Language Settings")
@@ -206,14 +208,10 @@ st.session_state.score
 
 st.subheader("Case Scenario")
 
-st.write("**Case:**", case["title"])
-st.write("**Party A:**", case["party_a"])
-st.write("Personality:", case["personality_a"])
-
-st.write("**Party B:**", case["party_b"])
-st.write("Personality:", case["personality_b"])
-
-st.write("**Facts:**", case.get("facts","No facts available"))
+st.write("**Case:**", translate_text(case["case"], language))
+st.write("**Party A:**", translate_text(case["partyA"], language))
+st.write("**Party B:**", translate_text(case["partyB"], language))
+st.write("**Facts:**", translate_text(case["facts"], language))
 
 # ---------------- EVIDENCE PANEL ----------------
 
@@ -231,7 +229,12 @@ for msg in st.session_state.messages:
 
 # ---------------- USER INPUT ----------------
 
-user_input = st.chat_input("Mediator: What would you like to say?")
+user_input = st.text_input(translate_text("Your message", language))
+
+if language == "Marathi":
+    user_input_for_ai = GoogleTranslator(source='mr', target='en').translate(user_input)
+else:
+    user_input_for_ai = user_input
 
 if user_input:
 
@@ -316,32 +319,19 @@ Remain neutral and encourage fair negotiation.
 
 if st.session_state.turn >= 6:
 
-    st.subheader("Final Mediation Report")
+    st.subheader(translate_text("Final Session Report", language))
 
-    summary_prompt = f"""
+report = f"""
+Case Summary:
+{case["case"]}
 
-Analyze this mediation session.
+Discussion Points:
+{discussion_summary}
 
-Conversation:
-
-{st.session_state.messages}
-
-Provide:
-
-1. Good mediator decisions
-2. Bad decisions
-3. Settlement likelihood
-4. Mediator skill rating
-5. Advice for improvement
-
+Outcome:
+{resolution}
 """
 
-    summary = client.chat.completions.create(
+translated_report = translate_text(report, language)
 
-        model="gpt-4o-mini",
-
-        messages=[{"role":"user","content":summary_prompt}]
-
-    )
-
-    st.write(summary.choices[0].message.content)
+st.write(translated_report)
