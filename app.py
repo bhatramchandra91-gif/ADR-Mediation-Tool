@@ -3,15 +3,15 @@ import random
 from openai import OpenAI
 from deep_translator import GoogleTranslator
 
-# ---------------------------------------------------
+# -------------------------------------------------
 # PAGE CONFIG
-# ---------------------------------------------------
+# -------------------------------------------------
 
 st.set_page_config(page_title="ADR Mediation Simulator", layout="wide")
 
-# ---------------------------------------------------
+# -------------------------------------------------
 # LANGUAGE SETTINGS
-# ---------------------------------------------------
+# -------------------------------------------------
 
 st.sidebar.header("Language Settings")
 
@@ -20,38 +20,40 @@ language = st.sidebar.selectbox(
     ["English", "Marathi"]
 )
 
-# ---------------------------------------------------
+# -------------------------------------------------
 # TRANSLATION FUNCTION
-# ---------------------------------------------------
+# -------------------------------------------------
 
 def translate_text(text, lang):
     if lang == "English":
         return text
     try:
-        return GoogleTranslator(source='auto', target='mr').translate(text)
+        return GoogleTranslator(source="auto", target="mr").translate(text)
     except:
         return text
 
 
-# ---------------------------------------------------
+# -------------------------------------------------
 # TITLE
-# ---------------------------------------------------
+# -------------------------------------------------
 
 st.title(translate_text("⚖️ AI ADR Mediation Training Simulator", language))
 
-# ---------------------------------------------------
+# -------------------------------------------------
 # OPENAI CLIENT
-# ---------------------------------------------------
+# -------------------------------------------------
 
 client = None
+
 try:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 except:
-    st.warning("OpenAI API key not found. AI mediator responses will be disabled.")
+    st.warning("OpenAI API key missing. AI mediator disabled.")
 
-# ---------------------------------------------------
-# RANDOM CASE GENERATOR
-# ---------------------------------------------------
+
+# -------------------------------------------------
+# CASE GENERATOR
+# -------------------------------------------------
 
 case_types = [
     "Employment Termination",
@@ -59,10 +61,191 @@ case_types = [
     "Partnership Conflict",
     "Landlord Tenant Dispute",
     "Family Business Disagreement",
-    "Intellectual Property Conflict",
-    "Contract Breach",
-    "Vendor Payment Dispute"
+    "Contract Breach"
 ]
+
+roles = [
+    "Aggressive negotiator",
+    "Strategic negotiator",
+    "Emotional stakeholder",
+    "Defensive negotiator",
+    "Logical corporate representative"
+]
+
+facts = [
+    "A disagreement arose after a recent business decision.",
+    "One party claims financial losses.",
+    "Contract interpretation disagreement occurred.",
+    "Conflict escalated after a management decision.",
+    "Both parties accuse each other of violating agreements."
+]
+
+
+def generate_case():
+
+    return {
+        "case": random.choice(case_types),
+        "partyA": f"Party A is a {random.choice(roles)} claiming unfair treatment.",
+        "partyB": f"Party B is a {random.choice(roles)} defending their actions.",
+        "facts": random.choice(facts)
+    }
+
+
+# -------------------------------------------------
+# SESSION STATE
+# -------------------------------------------------
+
+if "case" not in st.session_state:
+    st.session_state.case = generate_case()
+
+if "chat" not in st.session_state:
+    st.session_state.chat = []
+
+case = st.session_state.case
+
+
+# -------------------------------------------------
+# CASE DETAILS
+# -------------------------------------------------
+
+st.header(translate_text("Case Details", language))
+
+st.write("**Case:**", translate_text(case.get("case","Unavailable"), language))
+st.write("**Party A:**", translate_text(case.get("partyA","Unavailable"), language))
+st.write("**Party B:**", translate_text(case.get("partyB","Unavailable"), language))
+st.write("**Facts:**", translate_text(case.get("facts","Unavailable"), language))
+
+
+# -------------------------------------------------
+# NEW CASE BUTTON
+# -------------------------------------------------
+
+if st.button("Generate New Case"):
+
+    st.session_state.case = generate_case()
+    st.session_state.chat = []
+
+    st.rerun()
+
+
+# -------------------------------------------------
+# DISCUSSION AREA
+# -------------------------------------------------
+
+st.header(translate_text("Negotiation Discussion", language))
+
+user_input = st.text_input(
+    translate_text("Enter your mediation message", language)
+)
+
+if st.button("Send Message") and user_input:
+
+    if language == "Marathi":
+        user_input_ai = GoogleTranslator(source="mr", target="en").translate(user_input)
+    else:
+        user_input_ai = user_input
+
+    st.session_state.chat.append(("User", user_input))
+
+    mediator_reply = "Mediator response unavailable."
+
+    if client:
+
+        prompt = f"""
+You are a professional mediator helping resolve disputes.
+
+Case: {case['case']}
+Party A: {case['partyA']}
+Party B: {case['partyB']}
+Facts: {case['facts']}
+
+User message:
+{user_input_ai}
+
+Respond as a neutral mediator encouraging constructive negotiation.
+"""
+
+        try:
+
+            response = client.responses.create(
+                model="gpt-4.1-mini",
+                input=prompt
+            )
+
+            mediator_reply = response.output_text
+
+        except:
+            mediator_reply = "Mediator response error."
+
+    mediator_reply = translate_text(mediator_reply, language)
+
+    st.session_state.chat.append(("Mediator", mediator_reply))
+
+
+# -------------------------------------------------
+# CHAT DISPLAY
+# -------------------------------------------------
+
+for role, msg in st.session_state.chat:
+
+    if role == "User":
+        st.write(f"🧑 {msg}")
+    else:
+        st.write(f"⚖️ {msg}")
+
+
+# -------------------------------------------------
+# FINAL REPORT
+# -------------------------------------------------
+
+st.header(translate_text("Final Session Report", language))
+
+if st.button("Generate Mediation Report"):
+
+    conversation = ""
+
+    for role, msg in st.session_state.chat:
+        conversation += f"{role}: {msg}\n"
+
+    report = f"""
+Case: {case['case']}
+
+Party A Position:
+{case['partyA']}
+
+Party B Position:
+{case['partyB']}
+
+Facts:
+{case['facts']}
+
+Discussion Summary:
+{conversation}
+
+Mediator Observation:
+Both parties participated in negotiation discussions. Continued dialogue may help achieve settlement.
+"""
+
+    report = translate_text(report, language)
+
+    st.write(report)
+
+
+# -------------------------------------------------
+# DASHBOARD
+# -------------------------------------------------
+
+st.sidebar.header("Mediation Dashboard")
+
+st.sidebar.write(
+    "Messages exchanged:",
+    len(st.session_state.chat)
+)
+
+if len(st.session_state.chat) > 6:
+    st.sidebar.success("Negotiation progressing")
+else:
+    st.sidebar.info("Early stage mediation")]
 
 party_roles = [
     "Aggressive negotiator",
