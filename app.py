@@ -135,6 +135,7 @@ party_b = st.text_area("Party B Position")
 # -----------------------------
 # Mediator Suggestion
 # -----------------------------
+
 if st.button("Generate Mediator Suggestion"):
 
     if party_a and party_b:
@@ -147,9 +148,8 @@ if st.button("Generate Mediator Suggestion"):
         )
 
     else:
-        st.warning("Please enter both party positions.")    "Defensive negotiator",
-    "Strategic negotiator"
-
+        st.warning("Please enter both party positions.")
+        
 twists = [
     "New email evidence appears.",
     "Financial records contradict testimony.",
