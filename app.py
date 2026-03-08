@@ -1,13 +1,14 @@
 import streamlit as st
 import random
 import uuid
+import json
 from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 from openai import OpenAI
 
 # -----------------------------
-# OPENAI CLIENT
+# OPENAI
 # -----------------------------
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
@@ -16,46 +17,23 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 # -----------------------------
 st.set_page_config(page_title="AI ADR Mediation Platform", layout="wide")
 
-st.title("⚖️ AI ADR Mediation Platform")
-
-session_mode = st.sidebar.radio(
-    "Mediation Mode",
-    ["Single User (Mock Session)", "Multi User Room"]
-)
+st.title("⚖️ AI ADR Mediation Simulator")
 
 # -----------------------------
 # LANGUAGE SELECT
 # -----------------------------
 language = st.sidebar.selectbox(
-    "Select Language",
+    "Language",
     ["English","Hindi","Marathi"]
 )
 
 # -----------------------------
-# TRANSLATION
+# SESSION MODE
 # -----------------------------
-translations = {
-"Reveal Evidence":{
-"Hindi":"सबूत दिखाएं",
-"Marathi":"पुरावे दाखवा"
-},
-"Negotiation":{
-"Hindi":"बातचीत",
-"Marathi":"वाटाघाटी"
-},
-"Mediator Dashboard":{
-"Hindi":"मध्यस्थ डैशबोर्ड",
-"Marathi":"मध्यस्थ डॅशबोर्ड"
-}
-}
-
-def translate(text):
-    if language=="English":
-        return text
-    if text in translations:
-        return translations[text].get(language,text)
-    return text
-
+session_mode = st.sidebar.radio(
+    "Mediation Mode",
+    ["Single User Mock Session","Multi User Room"]
+)
 
 # -----------------------------
 # SESSION STATE
@@ -63,52 +41,50 @@ def translate(text):
 if "room_id" not in st.session_state:
     st.session_state.room_id = str(uuid.uuid4())[:6]
 
-if "messages_a" not in st.session_state:
-    st.session_state.messages_a=[]
-
-if "messages_b" not in st.session_state:
-    st.session_state.messages_b=[]
-
-if "score_history" not in st.session_state:
-    st.session_state.score_history=[]
-
 if "case" not in st.session_state:
-    st.session_state.case=None
+    st.session_state.case = None
+
+if "hidden_evidence" not in st.session_state:
+    st.session_state.hidden_evidence = []
 
 if "evidence_revealed" not in st.session_state:
-    st.session_state.evidence_revealed=False
+    st.session_state.evidence_revealed = False
+
+if "messages_a" not in st.session_state:
+    st.session_state.messages_a = []
+
+if "messages_b" not in st.session_state:
+    st.session_state.messages_b = []
+
+if "score_history" not in st.session_state:
+    st.session_state.score_history = []
 
 # -----------------------------
-# MEDIATION ROOM
+# ROOM SYSTEM
 # -----------------------------
-
 if session_mode == "Multi User Room":
 
-    st.sidebar.subheader("Online Mediation Room")
+    st.sidebar.subheader("Mediation Room")
 
-    if "room_id" not in st.session_state:
-        st.session_state.room_id = str(uuid.uuid4())[:6]
-
-    room_option = st.sidebar.radio(
+    option = st.sidebar.radio(
         "Room Option",
-        ["Create Room", "Join Room"]
+        ["Create Room","Join Room"]
     )
 
-    if room_option == "Create Room":
+    if option == "Create Room":
 
         if st.sidebar.button("Generate Room ID"):
             st.session_state.room_id = str(uuid.uuid4())[:6]
 
         st.sidebar.success(f"Room ID: {st.session_state.room_id}")
 
-    if room_option == "Join Room":
+    if option == "Join Room":
 
         join_id = st.sidebar.text_input("Enter Room ID")
 
         if st.sidebar.button("Join"):
             st.session_state.room_id = join_id
-            st.sidebar.success(f"Joined Room: {join_id}")
-
+            st.sidebar.success(f"Joined {join_id}")
 
 # -----------------------------
 # AI CASE GENERATOR
@@ -116,113 +92,149 @@ if session_mode == "Multi User Room":
 def generate_ai_case():
 
     prompt = """
-    Generate a mediation dispute with the following structure:
+Generate a mediation dispute.
 
-    Case Title:
-    Detailed Background (5-6 lines):
+Return JSON format:
 
-    Hidden Evidence:
-    - Evidence 1
-    - Evidence 2
-    - Evidence 3
+{
+"title":"",
+"background":"",
+"evidence":[
+"evidence1",
+"evidence2",
+"evidence3"
+]
+}
 
-    Return in JSON format:
-    {
-    "title":"",
-    "background":"",
-    "evidence":[]
-    }
-    """
+Background must be detailed (5-6 lines).
+Evidence must contain hidden facts.
+"""
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role":"user","content":prompt}]
     )
 
-    import json
-    case_data = json.loads(response.choices[0].message.content)
+    content = response.choices[0].message.content
 
-    return case_data
+    return json.loads(content)
+
+# -----------------------------
+# GENERATE CASE
+# -----------------------------
+if st.button("Generate AI Case"):
+
+    case_data = generate_ai_case()
+
+    st.session_state.case = case_data
+    st.session_state.hidden_evidence = case_data["evidence"]
+    st.session_state.evidence_revealed = False
+
+# -----------------------------
+# SHOW CASE
+# -----------------------------
+if st.session_state.case:
+
+    st.subheader("📁 Case Summary")
+
+    st.write("###",st.session_state.case["title"])
+    st.write(st.session_state.case["background"])
 
 # -----------------------------
 # EVIDENCE
 # -----------------------------
-st.subheader("Evidence Phase")
+st.subheader("🔎 Evidence")
 
-if st.button(translate("Reveal Evidence")):
-    st.session_state.evidence_revealed=True
+if st.button("Reveal Evidence"):
+
+    st.session_state.evidence_revealed = True
 
 if st.session_state.evidence_revealed:
-    st.success("Evidence disclosed to mediator")
+
+    st.success("Hidden Evidence Revealed")
+
+    for ev in st.session_state.hidden_evidence:
+        st.write("•",ev)
 
 else:
-    st.warning("Evidence hidden until negotiation progresses")
 
-
-# -----------------------------
-# NEGOTIATION CHATBOTS
-# -----------------------------
-st.subheader("Negotiation")
+    st.warning("Evidence hidden until mediator reveals it.")
 
 # -----------------------------
+# NEGOTIATION
+# -----------------------------
+st.subheader("💬 Negotiation")
+
 # SINGLE USER MODE
-# -----------------------------
-if session_mode == "Single User (Mock Session)":
+if session_mode == "Single User Mock Session":
 
-    col1, col2 = st.columns(2)
+    user_msg = st.text_area("Party A (Your Statement)")
 
-    with col1:
-        st.markdown("### Party A")
-        party_a = st.text_area("Party A Position")
+    if st.button("Send Offer"):
 
-    with col2:
-        st.markdown("### Party B")
-        party_b = st.text_area("Party B Position")
+        st.session_state.messages_a.append(user_msg)
 
-    if st.button("Submit Negotiation Round"):
+        transcript = "\n".join(st.session_state.messages_a)
 
-        st.session_state.messages_a.append(party_a)
-        st.session_state.messages_b.append(party_b)
+        prompt = f"""
+You are Party B negotiating in a mediation.
 
+Case:
+{st.session_state.case["background"]}
 
-# -----------------------------
+Conversation:
+{transcript}
+
+Respond with a negotiation counter offer.
+"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role":"user","content":prompt}]
+        )
+
+        ai_reply = response.choices[0].message.content
+
+        st.session_state.messages_b.append(ai_reply)
+
 # MULTI USER MODE
-# -----------------------------
 if session_mode == "Multi User Room":
 
     role = st.selectbox(
-        "Select Your Role",
-        ["Party A", "Party B", "Mediator"]
+        "Select Role",
+        ["Party A","Party B","Mediator"]
     )
 
-    user_message = st.text_input("Enter Message")
+    msg = st.text_input("Enter message")
 
     if st.button("Send Message"):
 
         if role == "Party A":
-            st.session_state.messages_a.append(user_message)
+            st.session_state.messages_a.append(msg)
 
         if role == "Party B":
-            st.session_state.messages_b.append(user_message)
+            st.session_state.messages_b.append(msg)
 
-    st.markdown("### Negotiation Transcript")
+# -----------------------------
+# TRANSCRIPT
+# -----------------------------
+st.subheader("Negotiation Transcript")
 
-    for m in st.session_state.messages_a:
-        st.write("🟦 A:", m)
+for m in st.session_state.messages_a:
+    st.write("🟦 Party A:",m)
 
-    for m in st.session_state.messages_b:
-        st.write("🟩 B:", m)
+for m in st.session_state.messages_b:
+    st.write("🟩 Party B:",m)
 
 # -----------------------------
 # EMOTION DETECTION
 # -----------------------------
 def detect_emotion(text):
 
-    text=text.lower()
+    text = text.lower()
 
-    anger=["fight","court","refuse","never"]
-
-    cooperative=["agree","settle","compromise","solution"]
+    anger = ["fight","court","refuse","never"]
+    cooperative = ["agree","settle","compromise","solution"]
 
     if any(w in text for w in anger):
         return "Angry"
@@ -232,123 +244,129 @@ def detect_emotion(text):
 
     return "Neutral"
 
-
 # -----------------------------
 # NEGOTIATION SCORE
 # -----------------------------
 def negotiation_score():
 
-    score=50
+    score = 50
 
-    for m in st.session_state.messages_a+st.session_state.messages_b:
+    messages = st.session_state.messages_a + st.session_state.messages_b
 
-        emotion=detect_emotion(m)
+    for m in messages:
 
-        if emotion=="Cooperative":
-            score+=10
+        emotion = detect_emotion(m)
 
-        if emotion=="Angry":
-            score-=10
+        if emotion == "Cooperative":
+            score += 10
 
-    score=max(0,min(score,100))
+        if emotion == "Angry":
+            score -= 10
+
+    score = max(0,min(score,100))
 
     return score
 
-
+# -----------------------------
+# EVALUATE NEGOTIATION
+# -----------------------------
 if st.button("Evaluate Negotiation"):
 
-    score=negotiation_score()
+    score = negotiation_score()
 
     st.session_state.score_history.append(score)
-
 
 # -----------------------------
 # SETTLEMENT PROBABILITY
 # -----------------------------
 if st.session_state.score_history:
 
-    score=st.session_state.score_history[-1]
+    score = st.session_state.score_history[-1]
 
 else:
 
-    score=0
+    score = 0
 
-
-st.subheader("Settlement Probability")
+st.subheader("📊 Settlement Probability")
 
 st.progress(score)
 
-st.write("Settlement Probability:",score,"%")
-
-
+st.write(f"Probability of Settlement: {score}%")
 
 # -----------------------------
-# MEDIATOR GPT SUGGESTION
+# MEDIATOR AI SUGGESTION
 # -----------------------------
 if st.button("AI Mediator Suggestion"):
 
-    transcript="\n".join(st.session_state.messages_a+st.session_state.messages_b)
-
-    prompt=f"""
-    You are a professional mediator.
-    Suggest a settlement based on this negotiation:
-
-    {transcript}
-    """
-
-    res=client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[{"role":"user","content":prompt}]
+    transcript = "\n".join(
+        st.session_state.messages_a +
+        st.session_state.messages_b
     )
 
-    suggestion=res.choices[0].message.content
+    prompt = f"""
+You are a professional mediator.
+
+Case:
+{st.session_state.case["background"]}
+
+Negotiation:
+{transcript}
+
+Provide a settlement suggestion.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role":"user","content":prompt}]
+    )
+
+    suggestion = response.choices[0].message.content
 
     st.subheader("Mediator Recommendation")
 
     st.write(suggestion)
 
-
-
 # -----------------------------
-# GRAPH DASHBOARD
+# MEDIATOR DASHBOARD
 # -----------------------------
-st.subheader(translate("Mediator Dashboard"))
+st.subheader("📈 Mediator Dashboard")
 
 if st.session_state.score_history:
 
-    df=pd.DataFrame({
-    "Round":range(1,len(st.session_state.score_history)+1),
-    "Score":st.session_state.score_history
+    df = pd.DataFrame({
+        "Round": range(1,len(st.session_state.score_history)+1),
+        "Score": st.session_state.score_history
     })
 
-    fig=plt.figure()
+    fig = plt.figure()
 
     plt.plot(df["Round"],df["Score"],marker="o")
 
     plt.xlabel("Negotiation Round")
-
     plt.ylabel("Settlement Score")
 
     st.pyplot(fig)
 
-
-
 # -----------------------------
-# MEDIATION REPORT
+# REPORT
 # -----------------------------
-st.subheader("Download Mediation Report")
+st.subheader("📄 Mediation Report")
 
-report=f"""
-
+report = f"""
 AI ADR MEDIATION REPORT
------------------------
 
 Date: {datetime.now()}
 
 Room ID: {st.session_state.room_id}
 
-Case:
-{st.session_state.case}
+Case Title:
+{st.session_state.case["title"] if st.session_state.case else ""}
+
+Background:
+{st.session_state.case["background"] if st.session_state.case else ""}
+
+Evidence:
+{st.session_state.hidden_evidence}
 
 Party A Messages:
 {st.session_state.messages_a}
@@ -359,14 +377,12 @@ Party B Messages:
 Score History:
 {st.session_state.score_history}
 
-Final Settlement Probability:
+Settlement Probability:
 {score}%
-
 """
 
-
 st.download_button(
-label="Download Report",
-data=report,
-file_name="mediation_report.txt"
+    label="Download Mediation Report",
+    data=report,
+    file_name="mediation_report.txt"
 )
