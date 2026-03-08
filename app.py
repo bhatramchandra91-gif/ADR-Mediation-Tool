@@ -18,6 +18,11 @@ st.set_page_config(page_title="AI ADR Mediation Platform", layout="wide")
 
 st.title("⚖️ AI ADR Mediation Platform")
 
+session_mode = st.sidebar.radio(
+    "Mediation Mode",
+    ["Single User (Mock Session)", "Multi User Room"]
+)
+
 # -----------------------------
 # LANGUAGE SELECT
 # -----------------------------
@@ -73,16 +78,36 @@ if "case" not in st.session_state:
 if "evidence_revealed" not in st.session_state:
     st.session_state.evidence_revealed=False
 
-
 # -----------------------------
 # MEDIATION ROOM
 # -----------------------------
-st.sidebar.subheader("Online Mediation Room")
 
-st.sidebar.write("Room ID:",st.session_state.room_id)
+if session_mode == "Multi User Room":
 
-if st.sidebar.button("Generate New Room"):
-    st.session_state.room_id=str(uuid.uuid4())[:6]
+    st.sidebar.subheader("Online Mediation Room")
+
+    if "room_id" not in st.session_state:
+        st.session_state.room_id = str(uuid.uuid4())[:6]
+
+    room_option = st.sidebar.radio(
+        "Room Option",
+        ["Create Room", "Join Room"]
+    )
+
+    if room_option == "Create Room":
+
+        if st.sidebar.button("Generate Room ID"):
+            st.session_state.room_id = str(uuid.uuid4())[:6]
+
+        st.sidebar.success(f"Room ID: {st.session_state.room_id}")
+
+    if room_option == "Join Room":
+
+        join_id = st.sidebar.text_input("Enter Room ID")
+
+        if st.sidebar.button("Join"):
+            st.session_state.room_id = join_id
+            st.sidebar.success(f"Joined Room: {join_id}")
 
 
 # -----------------------------
@@ -139,38 +164,56 @@ else:
 # -----------------------------
 # NEGOTIATION CHATBOTS
 # -----------------------------
-st.subheader(translate("Negotiation"))
+st.subheader("Negotiation")
 
-col1,col2=st.columns(2)
+# -----------------------------
+# SINGLE USER MODE
+# -----------------------------
+if session_mode == "Single User (Mock Session)":
 
-with col1:
+    col1, col2 = st.columns(2)
 
-    st.markdown("### Party A Chat")
+    with col1:
+        st.markdown("### Party A")
+        party_a = st.text_area("Party A Position")
 
-    msg_a=st.text_input("Party A message")
+    with col2:
+        st.markdown("### Party B")
+        party_b = st.text_area("Party B Position")
 
-    if st.button("Send A"):
+    if st.button("Submit Negotiation Round"):
 
-        st.session_state.messages_a.append(msg_a)
+        st.session_state.messages_a.append(party_a)
+        st.session_state.messages_b.append(party_b)
 
+
+# -----------------------------
+# MULTI USER MODE
+# -----------------------------
+if session_mode == "Multi User Room":
+
+    role = st.selectbox(
+        "Select Your Role",
+        ["Party A", "Party B", "Mediator"]
+    )
+
+    user_message = st.text_input("Enter Message")
+
+    if st.button("Send Message"):
+
+        if role == "Party A":
+            st.session_state.messages_a.append(user_message)
+
+        if role == "Party B":
+            st.session_state.messages_b.append(user_message)
+
+    st.markdown("### Negotiation Transcript")
 
     for m in st.session_state.messages_a:
-        st.write("A:",m)
-
-
-with col2:
-
-    st.markdown("### Party B Chat")
-
-    msg_b=st.text_input("Party B message")
-
-    if st.button("Send B"):
-
-        st.session_state.messages_b.append(msg_b)
+        st.write("🟦 A:", m)
 
     for m in st.session_state.messages_b:
-        st.write("B:",m)
-
+        st.write("🟩 B:", m)
 
 # -----------------------------
 # EMOTION DETECTION
