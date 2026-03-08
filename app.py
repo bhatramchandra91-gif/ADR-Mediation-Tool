@@ -173,25 +173,21 @@ if user_input:
     st.session_state.messages.append({"role":"user","content":user_input})
 
     prompt = f"""
+    You are simulating a professional mediation session.
 
-You are simulating a professional mediation session.
+    Party A personality: {case["personality_a"]}
+    Party B personality: {case["personality_b"]}
 
-Party A personality: {case["personality_a"]}
-Party B personality: {case["personality_b"]}
+    Mediator message:
 
-Mediator message:
+    {user_input}
 
-{user_input}
+    Respond as:
 
-Respond as:
-
-Party A reaction
-Party B reaction
-Mediator observation
-
-Remain neutral and encourage fair negotiation.
-
-"""
+    Party A reaction
+    Party B reaction
+    Mediator observation
+    """
 
     response = client.chat.completions.create(
 
