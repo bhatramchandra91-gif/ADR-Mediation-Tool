@@ -1,283 +1,331 @@
 import streamlit as st
 import random
+import uuid
+from datetime import datetime
+import pandas as pd
+import matplotlib.pyplot as plt
 from openai import OpenAI
 
-# ---------------- CONFIG ----------------
-
+# -----------------------------
+# OPENAI CLIENT
+# -----------------------------
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-st.set_page_config(page_title="ADR Mediation Simulator", layout="wide")
+# -----------------------------
+# PAGE CONFIG
+# -----------------------------
+st.set_page_config(page_title="AI ADR Mediation Platform", layout="wide")
 
-st.title("⚖️ AI ADR Mediation Training Simulator")
+st.title("⚖️ AI ADR Mediation Platform")
 
-# ---------------- DISCLAIMER ----------------
-
-st.warning(
-"""
-This ADR simulator is for training and educational purposes only.
-It does not provide legal advice. All mediation sessions are simulated.
-"""
+# -----------------------------
+# LANGUAGE SELECT
+# -----------------------------
+language = st.sidebar.selectbox(
+    "Select Language",
+    ["English","Hindi","Marathi"]
 )
 
-# ---------------- CASE DATABASE ----------------
-
-cases = [
-
-{
-"title":"Startup Equity Dispute",
-"party_a":"Founder claims investor unfairly diluted equity.",
-"party_b":"Investor claims founder failed agreed targets.",
-"facts":"Company recently raised Series A funding.",
-"hidden_facts":"Side agreement gives investor veto rights."
+# -----------------------------
+# TRANSLATION
+# -----------------------------
+translations = {
+"Reveal Evidence":{
+"Hindi":"सबूत दिखाएं",
+"Marathi":"पुरावे दाखवा"
 },
-
-{
-"title":"Employment Termination",
-"party_a":"Employee claims wrongful termination.",
-"party_b":"Employer claims misconduct.",
-"facts":"Employee terminated after internal investigation.",
-"hidden_facts":"Evidence suggests internal bias."
+"Negotiation":{
+"Hindi":"बातचीत",
+"Marathi":"वाटाघाटी"
+},
+"Mediator Dashboard":{
+"Hindi":"मध्यस्थ डैशबोर्ड",
+"Marathi":"मध्यस्थ डॅशबोर्ड"
+}
 }
 
-]
+def translate(text):
+    if language=="English":
+        return text
+    if text in translations:
+        return translations[text].get(language,text)
+    return text
 
-# ---------------- PERSONALITIES ----------------
 
-personalities = [
+# -----------------------------
+# SESSION STATE
+# -----------------------------
+if "room_id" not in st.session_state:
+    st.session_state.room_id = str(uuid.uuid4())[:6]
 
-"Aggressive negotiator",
-"Emotional party",
-"Logical corporate lawyer",
-"Defensive employee",
-"Strategic negotiator"
+if "messages_a" not in st.session_state:
+    st.session_state.messages_a=[]
 
-]
+if "messages_b" not in st.session_state:
+    st.session_state.messages_b=[]
 
-# ---------------- TWISTS ----------------
-
-twists = [
-
-"New email evidence appears.",
-"Financial records contradict testimony.",
-"A witness changes the timeline.",
-"A hidden clause in the contract is revealed.",
-"One party becomes emotionally aggressive."
-
-]
-
-# ---------------- SESSION STATE ----------------
+if "score_history" not in st.session_state:
+    st.session_state.score_history=[]
 
 if "case" not in st.session_state:
+    st.session_state.case=None
 
-    case = random.choice(cases)
+if "evidence_revealed" not in st.session_state:
+    st.session_state.evidence_revealed=False
 
-    case["personality_a"] = random.choice(personalities)
-    case["personality_b"] = random.choice(personalities)
 
-    st.session_state.case = case
-    st.session_state.messages = []
-    st.session_state.turn = 0
+# -----------------------------
+# MEDIATION ROOM
+# -----------------------------
+st.sidebar.subheader("Online Mediation Room")
 
-    st.session_state.settlement_probability = 50
-    st.session_state.trust_level = 50
-    st.session_state.conflict_level = 50
-    st.session_state.score = 0
+st.sidebar.write("Room ID:",st.session_state.room_id)
 
-case = st.session_state.case
+if st.sidebar.button("Generate New Room"):
+    st.session_state.room_id=str(uuid.uuid4())[:6]
 
-# ---------------- SIDEBAR UX ----------------
 
-if st.sidebar.button("Start New Case"):
+# -----------------------------
+# AI CASE GENERATOR
+# -----------------------------
+def generate_ai_case():
 
-    st.session_state.clear()
-    st.rerun()
+    prompt="""
+    Generate a short mediation dispute with:
+    Case title
+    Background
+    Two hidden evidences
+    """
 
-# ---------------- JURISDICTION ----------------
-
-jurisdiction = st.sidebar.selectbox(
-"Select Jurisdiction",
-["India","International"]
-)
-
-if jurisdiction == "India":
-    law = "Arbitration and Conciliation Act, 1996"
-else:
-    law = "UNCITRAL Model Law"
-
-st.sidebar.write("Applicable Law:", law)
-
-# ---------------- NEGOTIATION CONTEXT ----------------
-
-st.sidebar.subheader("BATNA")
-
-st.sidebar.write("Party A BATNA: Proceed to arbitration")
-st.sidebar.write("Party B BATNA: File lawsuit")
-
-# ---------------- MEDIATION DASHBOARD ----------------
-
-st.sidebar.subheader("Mediation Metrics")
-
-st.sidebar.metric(
-"Settlement Probability",
-f"{st.session_state.settlement_probability}%"
-)
-
-st.sidebar.metric(
-"Trust Level",
-st.session_state.trust_level
-)
-
-st.sidebar.metric(
-"Conflict Level",
-st.session_state.conflict_level
-)
-
-st.sidebar.metric(
-"Mediator Score",
-st.session_state.score
-)
-
-# ---------------- CASE DISPLAY ----------------
-
-st.subheader("Case Scenario")
-
-st.write("**Case:**", case["title"])
-st.write("**Party A:**", case["party_a"])
-st.write("Personality:", case["personality_a"])
-
-st.write("**Party B:**", case["party_b"])
-st.write("Personality:", case["personality_b"])
-
-st.write("**Facts:**", case.get("facts","No facts available"))
-
-# ---------------- EVIDENCE PANEL ----------------
-
-st.sidebar.subheader("Evidence")
-
-if st.sidebar.button("Reveal Evidence"):
-    st.sidebar.write(case.get("hidden_facts","No hidden facts"))
-
-st.divider()
-
-# ---------------- CHAT HISTORY ----------------
-
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
-
-# ---------------- USER INPUT ----------------
-
-user_input = st.chat_input("Mediator: What would you like to say?")
-
-if user_input:
-
-    # Display user message immediately
-    st.chat_message("user").write(user_input)
-
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input
-    })
-
-    with st.spinner("Mediator thinking..."):
-
-        prompt = f"""
-You are simulating a professional mediation session.
-
-Party A personality: {case["personality_a"]}
-Party B personality: {case["personality_b"]}
-
-Mediator message:
-{user_input}
-
-Respond as:
-
-Party A reaction
-Party B reaction
-Mediator observation
-
-Remain neutral and encourage fair negotiation.
-"""
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role":"system","content":"You are a neutral mediation trainer"},
-                {"role":"user","content":prompt}
-            ]
-        )
-
-        ai_reply = response.choices[0].message.content
-
-    # Show AI message immediately
-    st.chat_message("assistant").write(ai_reply)
-
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": ai_reply
-    })
-
-    # ---------------- TWIST ENGINE ----------------
-
-    if st.session_state.turn % 2 == 1:
-
-        twist = random.choice(twists)
-
-        st.session_state.messages.append({
-
-        "role":"assistant",
-        "content":f"⚖️ Case Twist: {twist}"
-
-        })
-
-    # ---------------- PROBABILITY UPDATE ----------------
-
-    if "settlement" in user_input.lower():
-
-        st.session_state.settlement_probability += 10
-        st.session_state.score += 8
-
-    if "clarify" in user_input.lower():
-
-        st.session_state.trust_level += 8
-        st.session_state.score += 5
-
-    if "threat" in user_input.lower():
-
-        st.session_state.conflict_level += 10
-        st.session_state.settlement_probability -= 5
-
-    st.session_state.turn += 1
-
-# ---------------- FINAL SESSION REPORT ----------------
-
-if st.session_state.turn >= 6:
-
-    st.subheader("Final Mediation Report")
-
-    summary_prompt = f"""
-
-Analyze this mediation session.
-
-Conversation:
-
-{st.session_state.messages}
-
-Provide:
-
-1. Good mediator decisions
-2. Bad decisions
-3. Settlement likelihood
-4. Mediator skill rating
-5. Advice for improvement
-
-"""
-
-    summary = client.chat.completions.create(
-
-        model="gpt-4o-mini",
-
-        messages=[{"role":"user","content":summary_prompt}]
-
+    res=client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role":"user","content":prompt}]
     )
 
-    st.write(summary.choices[0].message.content)
+    return res.choices[0].message.content
+
+
+if st.button("Generate AI Dispute Case"):
+
+    case_text=generate_ai_case()
+
+    st.session_state.case=case_text
+
+    st.session_state.evidence_revealed=False
+
+
+if st.session_state.case:
+
+    st.subheader("📁 Mediation Case")
+
+    st.write(st.session_state.case)
+
+
+# -----------------------------
+# EVIDENCE
+# -----------------------------
+st.subheader("Evidence Phase")
+
+if st.button(translate("Reveal Evidence")):
+    st.session_state.evidence_revealed=True
+
+if st.session_state.evidence_revealed:
+    st.success("Evidence disclosed to mediator")
+
+else:
+    st.warning("Evidence hidden until negotiation progresses")
+
+
+# -----------------------------
+# NEGOTIATION CHATBOTS
+# -----------------------------
+st.subheader(translate("Negotiation"))
+
+col1,col2=st.columns(2)
+
+with col1:
+
+    st.markdown("### Party A Chat")
+
+    msg_a=st.text_input("Party A message")
+
+    if st.button("Send A"):
+
+        st.session_state.messages_a.append(msg_a)
+
+
+    for m in st.session_state.messages_a:
+        st.write("A:",m)
+
+
+with col2:
+
+    st.markdown("### Party B Chat")
+
+    msg_b=st.text_input("Party B message")
+
+    if st.button("Send B"):
+
+        st.session_state.messages_b.append(msg_b)
+
+    for m in st.session_state.messages_b:
+        st.write("B:",m)
+
+
+# -----------------------------
+# EMOTION DETECTION
+# -----------------------------
+def detect_emotion(text):
+
+    text=text.lower()
+
+    anger=["fight","court","refuse","never"]
+
+    cooperative=["agree","settle","compromise","solution"]
+
+    if any(w in text for w in anger):
+        return "Angry"
+
+    if any(w in text for w in cooperative):
+        return "Cooperative"
+
+    return "Neutral"
+
+
+# -----------------------------
+# NEGOTIATION SCORE
+# -----------------------------
+def negotiation_score():
+
+    score=50
+
+    for m in st.session_state.messages_a+st.session_state.messages_b:
+
+        emotion=detect_emotion(m)
+
+        if emotion=="Cooperative":
+            score+=10
+
+        if emotion=="Angry":
+            score-=10
+
+    score=max(0,min(score,100))
+
+    return score
+
+
+if st.button("Evaluate Negotiation"):
+
+    score=negotiation_score()
+
+    st.session_state.score_history.append(score)
+
+
+# -----------------------------
+# SETTLEMENT PROBABILITY
+# -----------------------------
+if st.session_state.score_history:
+
+    score=st.session_state.score_history[-1]
+
+else:
+
+    score=0
+
+
+st.subheader("Settlement Probability")
+
+st.progress(score)
+
+st.write("Settlement Probability:",score,"%")
+
+
+
+# -----------------------------
+# MEDIATOR GPT SUGGESTION
+# -----------------------------
+if st.button("AI Mediator Suggestion"):
+
+    transcript="\n".join(st.session_state.messages_a+st.session_state.messages_b)
+
+    prompt=f"""
+    You are a professional mediator.
+    Suggest a settlement based on this negotiation:
+
+    {transcript}
+    """
+
+    res=client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role":"user","content":prompt}]
+    )
+
+    suggestion=res.choices[0].message.content
+
+    st.subheader("Mediator Recommendation")
+
+    st.write(suggestion)
+
+
+
+# -----------------------------
+# GRAPH DASHBOARD
+# -----------------------------
+st.subheader(translate("Mediator Dashboard"))
+
+if st.session_state.score_history:
+
+    df=pd.DataFrame({
+    "Round":range(1,len(st.session_state.score_history)+1),
+    "Score":st.session_state.score_history
+    })
+
+    fig=plt.figure()
+
+    plt.plot(df["Round"],df["Score"],marker="o")
+
+    plt.xlabel("Negotiation Round")
+
+    plt.ylabel("Settlement Score")
+
+    st.pyplot(fig)
+
+
+
+# -----------------------------
+# MEDIATION REPORT
+# -----------------------------
+st.subheader("Download Mediation Report")
+
+report=f"""
+
+AI ADR MEDIATION REPORT
+-----------------------
+
+Date: {datetime.now()}
+
+Room ID: {st.session_state.room_id}
+
+Case:
+{st.session_state.case}
+
+Party A Messages:
+{st.session_state.messages_a}
+
+Party B Messages:
+{st.session_state.messages_b}
+
+Score History:
+{st.session_state.score_history}
+
+Final Settlement Probability:
+{score}%
+
+"""
+
+
+st.download_button(
+label="Download Report",
+data=report,
+file_name="mediation_report.txt"
+)
