@@ -2,6 +2,16 @@ import streamlit as st
 import random
 from openai import OpenAI
 from deep_translator import GoogleTranslator
+if "evidence_revealed" not in st.session_state:
+    st.session_state.evidence_revealed = True
+if st.button("Reset Evidence"):
+    st.session_state.evidence_revealed = False
+
+if st.session_state.evidence_revealed:
+    st.success("New Evidence Revealed")
+    st.write(translate_text(case["facts"], language))
+else:
+    st.warning("Evidence hidden. Try negotiating first.")
 
 # ---------------- PAGE CONFIG ----------------
 
@@ -210,12 +220,25 @@ st.write("**Facts:**", translate_text(case.get("facts",""), language))
 
 # ---------------- EVIDENCE ----------------
 
-st.sidebar.subheader("Evidence")
+st.subheader("Evidence Phase")
 
-if st.sidebar.button("Reveal Evidence"):
-    st.sidebar.write(case.get("hidden_facts",""))
+if "evidence_revealed" not in st.session_state:
+    st.session_state.evidence_revealed = False
 
-st.divider()
+if st.button("Reveal Evidence"):
+    st.session_state.evidence_revealed = True
+
+if st.session_state.evidence_revealed:
+    st.success("New Evidence Revealed")
+    st.write(translate_text(case["facts"], language))
+else:
+    st.warning("Evidence hidden. Try negotiating first.")
+
+
+# Negotiation Section
+st.subheader("Negotiation")
+party_a = st.text_area("Party A Position")
+party_b = st.text_area("Party B Position")
 
 # ---------------- CHAT HISTORY ----------------
 
