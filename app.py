@@ -21,23 +21,18 @@ It does not provide legal advice. All mediation sessions are simulated.
 
 # ---------------- CASE DATABASE ----------------
 
-cases = [
+case_types = [
 
-{
-"title":"Startup Equity Dispute",
-"party_a":"Founder claims investor unfairly diluted equity.",
-"party_b":"Investor claims founder failed agreed targets.",
-"facts":"Company recently raised Series A funding.",
-"hidden_facts":"Side agreement gives investor veto rights."
-},
-
-{
-"title":"Employment Termination",
-"party_a":"Employee claims wrongful termination.",
-"party_b":"Employer claims misconduct.",
-"facts":"Employee terminated after internal investigation.",
-"hidden_facts":"Evidence suggests internal bias."
-}
+"Employment dispute",
+"Commercial contract dispute",
+"Startup founder dispute",
+"Family inheritance dispute",
+"Real estate property dispute",
+"Partnership conflict",
+"Vendor payment dispute",
+"Shareholder disagreement",
+"Intellectual property conflict",
+"Joint venture breakdown"
 
 ]
 
@@ -65,11 +60,65 @@ twists = [
 
 ]
 
+def generate_case():
+
+    case_type = random.choice(case_types)
+
+    prompt = f"""
+Create a realistic Alternative Dispute Resolution mediation case.
+
+Case Type: {case_type}
+
+Provide output in this format:
+
+Title:
+Party A:
+Party B:
+Facts:
+Hidden Facts:
+
+Make the facts different every time.
+"""
+
+    response = client.chat.completions.create(
+
+        model="gpt-4o-mini",
+
+        messages=[
+            {"role":"system","content":"You create legal mediation scenarios"},
+            {"role":"user","content":prompt}
+        ]
+
+    )
+
+    text = response.choices[0].message.content
+
+    case = {}
+
+    for line in text.split("\n"):
+
+        if "Title:" in line:
+            case["title"] = line.replace("Title:","").strip()
+
+        if "Party A:" in line:
+            case["party_a"] = line.replace("Party A:","").strip()
+
+        if "Party B:" in line:
+            case["party_b"] = line.replace("Party B:","").strip()
+
+        if "Facts:" in line:
+            case["facts"] = line.replace("Facts:","").strip()
+
+        if "Hidden Facts:" in line:
+            case["hidden_facts"] = line.replace("Hidden Facts:","").strip()
+
+    return case
+
 # ---------------- SESSION STATE ----------------
 
 if "case" not in st.session_state:
 
-    case = random.choice(cases)
+    case = generate_case()
 
     case["personality_a"] = random.choice(personalities)
     case["personality_b"] = random.choice(personalities)
