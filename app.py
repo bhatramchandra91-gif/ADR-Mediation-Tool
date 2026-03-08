@@ -353,7 +353,7 @@ if st.session_state.turn >= 6:
 
 report = f"""
 Case Summary:
-{case["case"]}
+{case.get["case"]}
 
 Discussion Points:
 {discussion_summary}
