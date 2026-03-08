@@ -170,41 +170,51 @@ user_input = st.chat_input("Mediator: What would you like to say?")
 
 if user_input:
 
-    st.session_state.messages.append({"role":"user","content":user_input})
+    # Display user message immediately
+    st.chat_message("user").write(user_input)
 
-    prompt = f"""
-    You are simulating a professional mediation session.
+    st.session_state.messages.append({
+        "role": "user",
+        "content": user_input
+    })
 
-    Party A personality: {case["personality_a"]}
-    Party B personality: {case["personality_b"]}
+    with st.spinner("Mediator thinking..."):
 
-    Mediator message:
+        prompt = f"""
+You are simulating a professional mediation session.
 
-    {user_input}
+Party A personality: {case["personality_a"]}
+Party B personality: {case["personality_b"]}
 
-    Respond as:
+Mediator message:
+{user_input}
 
-    Party A reaction
-    Party B reaction
-    Mediator observation
-    """
+Respond as:
 
-    response = client.chat.completions.create(
+Party A reaction
+Party B reaction
+Mediator observation
 
-        model="gpt-4o-mini",
+Remain neutral and encourage fair negotiation.
+"""
 
-        messages=[
-            {"role":"system","content":"You are a neutral mediation trainer"},
-            {"role":"user","content":prompt}
-        ]
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role":"system","content":"You are a neutral mediation trainer"},
+                {"role":"user","content":prompt}
+            ]
+        )
 
-    )
+        ai_reply = response.choices[0].message.content
 
-    ai_reply = response.choices[0].message.content
+    # Show AI message immediately
+    st.chat_message("assistant").write(ai_reply)
 
-    st.session_state.messages.append(
-        {"role":"assistant","content":ai_reply}
-    )
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": ai_reply
+    })
 
     # ---------------- TWIST ENGINE ----------------
 
