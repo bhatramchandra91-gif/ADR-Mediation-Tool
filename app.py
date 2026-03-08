@@ -226,10 +226,22 @@ st.session_state.score
 
 st.subheader("Case Scenario")
 
-st.write("**Case:**", translate_text(case["case"], language))
-st.write("**Party A:**", translate_text(case["partyA"], language))
-st.write("**Party B:**", translate_text(case["partyB"], language))
-st.write("**Facts:**", translate_text(case["facts"], language))
+st.write("**Case:**", translate_text(case.get("case","No case available"), language))
+
+st.write(
+    "**Party A:**",
+    translate_text(case.get("partyA","Information unavailable"), language)
+)
+
+st.write(
+    "**Party B:**",
+    translate_text(case.get("partyB","Information unavailable"), language)
+)
+
+st.write(
+    "**Facts:**",
+    translate_text(case.get("facts","Facts not provided"), language)
+)
 
 # ---------------- EVIDENCE PANEL ----------------
 
