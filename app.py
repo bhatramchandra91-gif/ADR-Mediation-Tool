@@ -1,68 +1,153 @@
 import streamlit as st
-import random
-from openai import OpenAI
-from deep_translator import GoogleTranslator
-if "evidence_revealed" not in st.session_state:
-    st.session_state.evidence_revealed = True
-if st.button("Reset Evidence"):
-    st.session_state.evidence_revealed = False
 
-if st.session_state.evidence_revealed:
-    st.success("New Evidence Revealed")
-    st.write(translate_text(case["facts"], language))
-else:
-    st.warning("Evidence hidden. Try negotiating first.")
+# -----------------------------
+# Page Config
+# -----------------------------
+st.set_page_config(page_title="ADR Mediation Tool", layout="centered")
 
-# ---------------- PAGE CONFIG ----------------
+st.title("ADR Mediation Simulation Tool")
 
-st.set_page_config(page_title="ADR Mediation Simulator", layout="wide")
-
-# ---------------- OPENAI CLIENT ----------------
-
-client = None
-try:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-except:
-    st.warning("OpenAI API key not found. AI responses disabled.")
-
-# ---------------- LANGUAGE ----------------
-
-st.sidebar.header("Language Settings")
-
+# -----------------------------
+# Language Selection
+# -----------------------------
 language = st.sidebar.selectbox(
     "Select Language",
-    ["English","Marathi"]
+    ["English", "Marathi"]
 )
 
+# -----------------------------
+# Translation Dictionary
+# -----------------------------
+translations = {
+    "Payment dispute between contractor and homeowner":
+        "कंत्राटदार आणि घरमालक यांच्यातील देयक वाद",
+
+    "Land boundary disagreement between neighbors":
+        "शेजाऱ्यांमधील जमिनीच्या सीमावाद",
+
+    "The contractor completed work but the homeowner claims delays and poor finishing.":
+        "कंत्राटदाराने काम पूर्ण केले पण घरमालक विलंब आणि कामाच्या गुणवत्तेबद्दल तक्रार करतो.",
+
+    "Survey documents show unclear boundary markings between both properties.":
+        "सर्वेक्षण कागदपत्रांमध्ये दोन्ही मालमत्तांमधील सीमा स्पष्ट नाही.",
+
+    "Reveal Evidence":
+        "पुरावे दाखवा",
+
+    "Evidence hidden. Try negotiating first.":
+        "पुरावे लपवले आहेत. आधी वाटाघाटी करण्याचा प्रयत्न करा.",
+
+    "New Evidence Revealed":
+        "नवीन पुरावे उघड झाले",
+
+    "Negotiation":
+        "वाटाघाटी",
+
+    "Mediator Suggestion":
+        "मध्यस्थाची सूचना",
+
+    "Reset Evidence":
+        "पुरावे रीसेट करा"
+}
+
+# -----------------------------
+# Translation Function
+# -----------------------------
 def translate_text(text, lang):
-    if lang == "English":
-        return text
-    try:
-        return GoogleTranslator(source="auto", target="mr").translate(text)
-    except:
-        return text
+    if lang == "Marathi":
+        return translations.get(text, text)
+    return text
 
-# ---------------- TITLE ----------------
 
-st.title(translate_text("⚖️ AI ADR Mediation Training Simulator", language))
-
-# ---------------- CASE TYPES ----------------
-
-case_types = [
-    "Family inheritance dispute",
-    "Real estate property dispute",
-    "Partnership conflict",
-    "Vendor payment dispute",
-    "Shareholder disagreement",
-    "Intellectual property conflict",
-    "Joint venture breakdown"
+# -----------------------------
+# Case Data
+# -----------------------------
+cases = [
+    {
+        "case": "Payment dispute between contractor and homeowner",
+        "facts": "The contractor completed work but the homeowner claims delays and poor finishing."
+    },
+    {
+        "case": "Land boundary disagreement between neighbors",
+        "facts": "Survey documents show unclear boundary markings between both properties."
+    }
 ]
 
-personalities = [
-    "Aggressive negotiator",
-    "Emotional stakeholder",
-    "Logical corporate lawyer",
-    "Defensive negotiator",
+# -----------------------------
+# Case Selection
+# -----------------------------
+case_names = [c["case"] for c in cases]
+
+selected_case = st.selectbox(
+    "Select a Case",
+    case_names
+)
+
+# Get selected case dictionary
+case = next(c for c in cases if c["case"] == selected_case)
+
+# -----------------------------
+# Display Case
+# -----------------------------
+st.subheader("Case Description")
+
+st.write(
+    translate_text(case["case"], language)
+)
+
+# -----------------------------
+# Evidence Phase
+# -----------------------------
+st.subheader("Evidence Phase")
+
+if "evidence_revealed" not in st.session_state:
+    st.session_state.evidence_revealed = False
+
+if st.button(translate_text("Reveal Evidence", language)):
+    st.session_state.evidence_revealed = True
+
+if st.session_state.evidence_revealed:
+    st.success(translate_text("New Evidence Revealed", language))
+    st.write(
+        translate_text(case["facts"], language)
+    )
+else:
+    st.warning(
+        translate_text("Evidence hidden. Try negotiating first.", language)
+    )
+
+# Reset Evidence Button
+if st.button(translate_text("Reset Evidence", language)):
+    st.session_state.evidence_revealed = False
+
+
+# -----------------------------
+# Negotiation Section
+# -----------------------------
+st.subheader(
+    translate_text("Negotiation", language)
+)
+
+party_a = st.text_area("Party A Position")
+
+party_b = st.text_area("Party B Position")
+
+# -----------------------------
+# Mediator Suggestion
+# -----------------------------
+if st.button("Generate Mediator Suggestion"):
+
+    if party_a and party_b:
+        st.subheader(
+            translate_text("Mediator Suggestion", language)
+        )
+
+        st.write(
+            "Consider a compromise where both parties adjust expectations and agree on a mutually acceptable resolution."
+        )
+
+    else:
+        st.warning("Please enter both party positions.")    "Defensive negotiator",
     "Strategic negotiator"
 ]
 
